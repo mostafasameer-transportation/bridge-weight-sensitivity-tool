@@ -18,7 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply robust HTML refinement
+      - name: Apply research dashboard refinement
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -26,6 +26,7 @@ jobs:
 
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
+          original = s
 
           s = s.replace(
               'Interpretable Network Metrics for Equity-Aware Bridge Prioritization — Sensitivity Tool',
@@ -73,9 +74,10 @@ jobs:
           @media(max-width:700px){body{padding:0 16px 48px;}.fiu-banner{margin:0 -16px;padding:9px 16px;}.fiu-banner .fiu-tag{display:none;}.thesis-title{font-size:25px;}.tool-name{font-size:17px;}.method-strip{grid-template-columns:1fr;}.stats-row{grid-template-columns:repeat(2,1fr);}}
           '''
           if '2026 research-dashboard refinement' not in s:
-              if '</style>' not in s:
-                  raise SystemExit('style closing tag not found')
-              s = s.replace('</style>', css + '\n</style>', 1)
+              m = re.search(r'</style\s*>', s, flags=re.I)
+              if not m:
+                  raise SystemExit('No closing style tag found; refusing to modify the application.')
+              s = s[:m.start()] + css + '\n' + s[m.start():]
 
           status = '''
           <div class="data-status-row" aria-label="Data status">
@@ -84,12 +86,10 @@ jobs:
           </div>
           '''
           if 'data-status-row' not in s:
-              # Put the status directly after the main data note, before the presets.
-              m = re.search(r'(</div>\s*)(<div[^>]+class=["\']presetbar["\'])', s, flags=re.I)
+              m = re.search(r'<div[^>]*class=["\'][^"\']*presetbar[^"\']*["\'][^>]*>', s, flags=re.I)
               if not m:
-                  raise SystemExit('presetbar insertion point not found')
-              pos = m.start(2)
-              s = s[:pos] + status + '\n' + s[pos:]
+                  raise SystemExit('Preset bar not found; refusing to modify the application.')
+              s = s[:m.start()] + status + '\n' + s[m.start():]
 
           method = '''
           <div class="method-strip" aria-label="Research tool overview">
@@ -100,10 +100,13 @@ jobs:
           </div>
           '''
           if 'method-strip' not in s:
-              m = re.search(r'<div[^>]+class=["\']presetbar["\']', s, flags=re.I)
+              m = re.search(r'<div[^>]*class=["\'][^"\']*presetbar[^"\']*["\'][^>]*>', s, flags=re.I)
               if not m:
-                  raise SystemExit('presetbar method insertion point not found')
+                  raise SystemExit('Preset bar not found for method strip; refusing to modify the application.')
               s = s[:m.start()] + method + '\n' + s[m.start():]
+
+          if s == original:
+              raise SystemExit('No changes were made.')
 
           p.write_text(s, encoding='utf-8')
           print('Refined', len(s), 'bytes')
@@ -120,12 +123,12 @@ jobs:
 
       - name: Commit updated application
         run: |
-          if git diff --quiet -- index.html; then
-            echo 'No index.html changes needed.'
-            exit 0
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git commit -m 'Refine bridge sensitivity research dashboard'
-          git push
+          if git diff --quiet -- index.html; then
+            echo 'No index.html changes needed.'
+          else
+            git add index.html
+            git commit -m 'Refine bridge sensitivity research dashboard'
+            git push
+          fi
