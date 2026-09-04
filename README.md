@@ -277,3 +277,5 @@ Developed in the context of Ph.D. dissertation research at Florida International
 ## License / Use
 
 This repository is intended for academic research and methodological demonstration. No formal open-source license is currently specified; reuse and redistribution should therefore be treated as subject to the repository owner's permission unless a formal license is subsequently added.
+
+<!-- refinement workflow trigger: 2026-09-04 -->
